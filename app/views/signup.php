@@ -143,5 +143,7 @@
 
         <p class="auth-footer">Already have an account? <a href="/login">Log in</a></p>
     </main>
+    <script src="/js/frontend.js"></script>
+
 </body>
 </html>

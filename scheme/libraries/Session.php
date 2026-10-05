@@ -135,9 +135,10 @@ class Session {
 	public function __construct()
     {
         $this->config = get_config();
+        $session_is_active = session_status() === PHP_SESSION_ACTIVE;
 
         // Database session handler support
-        if ($this->config['sess_driver'] === 'database') {
+        if (!$session_is_active && $this->config['sess_driver'] === 'database') {
             $handler = load_class('Database_session_handler', 'libraries/Session');
             session_set_save_handler($handler, true);
         }
@@ -176,41 +177,50 @@ class Session {
          
         // Cookie name setup
         $prefix = $this->config['cookie_prefix'] ?? '';
-        $this->config['cookie_name'] = $prefix 
+        $configured_cookie_name = $prefix
             ? $prefix . ($this->config['sess_cookie_name'] ?? 'lavalust_session')
             : ($this->config['sess_cookie_name'] ?? ini_get('session.name'));
 
-        ini_set('session.name', $this->config['cookie_name']);
+        if ($session_is_active) {
+            $this->config['cookie_name'] = session_name();
+        } else {
+            $this->config['cookie_name'] = $configured_cookie_name;
+            ini_set('session.name', $this->config['cookie_name']);
+        }
 
         // Expiration
         $this->config['sess_expiration'] = (int)($this->config['sess_expiration'] ?? ini_get('session.gc_maxlifetime') ?: 7200);
-        ini_set('session.gc_maxlifetime', $this->config['sess_expiration']);
+        if (!$session_is_active) {
+            ini_set('session.gc_maxlifetime', $this->config['sess_expiration']);
+        }
 
         $this->config['cookie_expiration'] = isset($this->config['cookie_expiration'])
             ? (int)$this->config['cookie_expiration']
             : (($this->config['sess_expire_on_close'] ?? false) ? 0 : $this->config['sess_expiration']);
 
         // Secure cookie params (2026 best practices)
-        session_set_cookie_params([
-            'lifetime' => $this->config['cookie_expiration'],
-            'path'     => $this->config['cookie_path'] ?? '/',
-            'domain'   => $this->config['cookie_domain'] ?? '',
-            'secure'   => $this->config['cookie_secure'] ?? false,   // Set true in production + HTTPS
-            'httponly' => true,
-            'samesite' => $this->config['cookie_samesite'] ?? 'Strict'  // Strict is safer
-        ]);
+        if (!$session_is_active) {
+            session_set_cookie_params([
+                'lifetime' => $this->config['cookie_expiration'],
+                'path'     => $this->config['cookie_path'] ?? '/',
+                'domain'   => $this->config['cookie_domain'] ?? '',
+                'secure'   => $this->config['cookie_secure'] ?? false,   // Set true in production + HTTPS
+                'httponly' => true,
+                'samesite' => $this->config['cookie_samesite'] ?? 'Strict'  // Strict is safer
+            ]);
 
-        // Hardened PHP session settings
-        ini_set('session.use_trans_sid', 0);
-        ini_set('session.use_strict_mode', 1);
-        ini_set('session.use_cookies', 1);
-        ini_set('session.use_only_cookies', 1);
-        ini_set('session.cookie_httponly', 1);
-        
-		if (version_compare(PHP_VERSION, '8.4.0', '<')) {
-			ini_set('session.sid_length', $this->_get_sid_length());
-			ini_set('session.sid_bits_per_character', 6);
-		}
+            // Hardened PHP session settings
+            ini_set('session.use_trans_sid', 0);
+            ini_set('session.use_strict_mode', 1);
+            ini_set('session.use_cookies', 1);
+            ini_set('session.use_only_cookies', 1);
+            ini_set('session.cookie_httponly', 1);
+
+            if (version_compare(PHP_VERSION, '8.4.0', '<')) {
+                ini_set('session.sid_length', $this->_get_sid_length());
+                ini_set('session.sid_bits_per_character', 6);
+            }
+        }
 
         // Security initialization
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -223,7 +233,9 @@ class Session {
 
         // Start session
         $existing_session = !empty($_COOKIE[$this->config['cookie_name']]);
-        session_start();
+        if (!$session_is_active) {
+            session_start();
+        }
 
         if (!$existing_session && empty($_SESSION)) {
             $creation_msg = $this->security_track_session_creation($ip, $fingerprint);

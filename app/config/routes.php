@@ -56,16 +56,28 @@ $router->post('login', 'AuthController::login');        // process login
 
 $router->get('logout', 'AuthController::logout');       // logout
 
-// Migration routes (optional, for dev work)
-$router->get('create-migration/{migration_class}', 'MigrationController::create_migration');
-$router->get('migrate', 'MigrationController::migrate');
-$router->get('rollback', 'MigrationController::rollback');
-$router->get('rollback-all', 'MigrationController::rollback_all');
-$router->get('refresh', 'MigrationController::refresh');
-$router->get('status', 'MigrationController::status');
+// Keep migration actions out of production web requests.
+if ((getenv('APP_ENV') ?: 'development') !== 'production') {
+    $router->get('create-migration/{migration_class}', 'MigrationController::create_migration');
+    $router->get('migrate', 'MigrationController::migrate');
+    $router->get('rollback', 'MigrationController::rollback');
+    $router->get('rollback-all', 'MigrationController::rollback_all');
+    $router->get('refresh', 'MigrationController::refresh');
+    $router->get('status', 'MigrationController::status');
+}
 
 // Product routes (CRUD)
 $router->get('products', 'ProductController::index');          // list products
 $router->post('products', 'ProductController::store');         // create product
 $router->put('products/{id}', 'ProductController::update');    // update product
 $router->delete('products/{id}', 'ProductController::delete'); // delete product
+
+// JSON API consumed by the separate Vercel frontend.
+$router->post('api/auth/signup', 'ApiController::signup');
+$router->post('api/auth/login', 'ApiController::login');
+$router->get('api/auth/session', 'ApiController::session');
+$router->post('api/auth/logout', 'ApiController::logout');
+$router->get('api/products', 'ApiController::products');
+$router->post('api/products', 'ApiController::store_product');
+$router->put('api/products/{id}', 'ApiController::update_product');
+$router->delete('api/products/{id}', 'ApiController::delete_product');

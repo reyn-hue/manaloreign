@@ -16,6 +16,10 @@ class UserModel extends Model {
         return $this->db->table('users')->where('email', $email)->get();
     }
 
+    public function findById($id) {
+        return $this->db->table('users')->where('id', $id)->get();
+    }
+
     public function create($data) {
         return $this->db->table('users')->insert($data);
     }

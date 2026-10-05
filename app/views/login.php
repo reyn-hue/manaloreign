@@ -138,5 +138,7 @@
 
         <p class="auth-footer">Don’t have an account? <a href="/signup">Create one</a></p>
     </main>
+    <script src="/js/frontend.js"></script>
+
 </body>
 </html>

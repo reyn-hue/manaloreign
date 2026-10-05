@@ -32,4 +32,9 @@ class Auth
     {
         $this->session->unset_userdata('user_id');
     }
+
+    public function user_id()
+    {
+        return $this->session->userdata('user_id');
+    }
 }

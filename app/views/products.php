@@ -378,5 +378,7 @@
         }
     });
 </script>
+<script src="/js/frontend.js"></script>
+
 </body>
 </html>
